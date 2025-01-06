@@ -19,7 +19,6 @@ async def get_suggestions(input: str):
         params = {
             "key": API_KEY, 
             "sensor": "false", 
-            "types": "(regions)", 
             "input": input
         }
         
@@ -78,4 +77,30 @@ async def get_geometry(place_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
+# Get location name from place_id
+@app.get("/location/name")
+async def get_name(place_id: str):
+    try:
+        api_url = BASE_API_URL + '/details/json'
+        params = {
+            "key": API_KEY, 
+            "place_id": place_id
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(api_url, params=params)
+        
+        response.raise_for_status()
+        responseJson = response.json()
 
+        name = responseJson["result"]["formatted_address"]
+        
+        return {
+            "name": name
+        }
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=response.status_code, detail=f"API error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
