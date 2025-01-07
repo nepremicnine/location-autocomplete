@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: location-autocomplete
+  namespace: nepremicnine
+spec:
+  selector:
+    matchLabels:
+      app: location-autocomplete
+  template:
+    metadata:
+      labels:
+        app: location-autocomplete
+    spec:
+      containers:
+        - name: location-autocomplete
+          image: potocnikvid/nepremicnine-location-autocomplete
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GOOGLE_PLACES_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: GOOGLE_PLACES_API_KEY
+            - name: LOCATION_AUTOCOMPLETE_SERVER_MODE
+              value: "release"
+            - name: LOCATION_AUTOCOMPLETE_SERVER_PORT
+              value: "8080"
+          resources:
+            limits:
+              cpu: "0.1"
+              memory: "256Mi"
+            requests:
+              cpu: "0.01"
+              memory: "32Mi"
+          readinessProbe:
+            httpGet:
+              path: /location-autocomplete/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 10
+            failureThreshold: 30
+          livenessProbe: 
+            httpGet:
+              path: /location-autocomplete/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
