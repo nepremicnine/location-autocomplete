@@ -128,7 +128,14 @@ LOCATION_AUTOCOMPLETE_SERVER_PORT = os.getenv("LOCATION_AUTOCOMPLETE_SERVER_PORT
 # Determine the prefix based on the server mode
 API_PREFIX = "/location-autocomplete" if LOCATION_AUTOCOMPLETE_SERVER_MODE == "release" else ""
 
-app = FastAPI()
+app = FastAPI(
+    title="Location Autocomplete API",
+    description="API for getting location suggestions, geometry, and name based on Google Places API",
+    version="1.0.0",
+    openapi_url=f"{API_PREFIX}/openapi.json",
+    docs_url=f"{API_PREFIX}/docs",
+    redoc_url=f"{API_PREFIX}/redoc",
+)
 
 # Get location suggestion based on string input
 @app.get(f"{API_PREFIX}/location/suggestions")
