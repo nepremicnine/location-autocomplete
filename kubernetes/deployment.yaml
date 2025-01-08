@@ -37,7 +37,7 @@ spec:
               memory: "32Mi"
           readinessProbe:
             httpGet:
-              path: /location-autocomplete/health/rediness
+              path: /location-autocomplete/health/readiness
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30
