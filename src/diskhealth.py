@@ -1,5 +1,5 @@
 import psutil
-from models import HealthComponent, HealthStatus
+from src.models import HealthComponent, HealthStatus
 
 def check_disk_health():
     try:

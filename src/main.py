@@ -12,9 +12,9 @@ from tenacity import (
     retry_if_exception_type,
     RetryError,
 )
-from cpuhealth import check_cpu_health
-from diskhealth import check_disk_health
-from models import HealthResponse
+from src.cpuhealth import check_cpu_health
+from src.diskhealth import check_disk_health
+from src.models import HealthResponse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -214,14 +214,14 @@ async def get_name(place_id: str):
 
 
 # Health check endpoint
-@app.get(f"{API_PREFIX}/health/general")
-async def health():
+@app.get(f"{API_PREFIX}/health/liveness")
+async def liveness_check():
     return {"status": "ok"}
 
 
 # Health check Google Places API
 @app.get(f"{API_PREFIX}/health/google-places")
-async def health_general():
+async def google_places_api_health_check():
     params = {
         "query": "test",
         "key": API_KEY,
@@ -252,3 +252,18 @@ async def cpu_health_check():
 async def disk_health_check():
     disk_health = check_disk_health()
     return HealthResponse(status=disk_health.status, components={"disk": disk_health})
+
+
+@app.get(f"{API_PREFIX}/health/readiness")
+async def readiness_check():
+    liveness = await liveness_check()
+    google_places_health = await google_places_api_health_check()
+    cpu_health = check_cpu_health()
+    disk_health = check_disk_health()
+
+    print(liveness, google_places_health, cpu_health, disk_health)
+
+    if liveness["status"] == "ok" and cpu_health.status == "UP" and disk_health.status == "UP" and google_places_health["status"] == "ok":
+        return {"status": "ok"}
+    else:
+        return {"status": "error"}

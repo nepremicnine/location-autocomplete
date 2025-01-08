@@ -1,5 +1,5 @@
 import psutil
-from models import HealthComponent
+from src.models import HealthComponent
 
 # CPU Health Check
 def check_cpu_health() -> HealthComponent:
