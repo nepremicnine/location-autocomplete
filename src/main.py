@@ -164,55 +164,6 @@ async def get_geometry(place_id: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# Helper function with Circuit Breaker for getting geometry
-@retry_strategy
-@breaker
-async def get_name_from_google(place_id: str):
-    api_url = "https://maps.googleapis.com/maps/api/place/details/json"
-    params = {"key": API_KEY, "place_id": place_id}
-
-    async with httpx.AsyncClient() as client:
-        response = await client.get(api_url, params=params)
-
-    response.raise_for_status()
-    response_json = response.json()
-
-    name = response_json["result"]["formatted_address"]
-
-    return name
-
-
-# Get location name from place_id
-@app.get(f"{API_PREFIX}/location/name")
-async def get_name(place_id: str):
-    try:
-        name = await get_name_from_google(place_id)
-        return {"name": name}
-
-    except RetryError as retry_error:
-        raise HTTPException(
-            status_code=503,
-            detail="Service temporarily unavailable after multiple retry attempts. Please try again later.",
-        )
-
-    except pybreaker.CircuitBreakerError:
-        raise HTTPException(
-            status_code=503,
-            detail="Service temporarily unavailable due to repeated failures.",
-        )
-
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
-
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=response.status_code, detail=f"API error: {str(e)}"
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 # Health check endpoint
 @app.get(f"{API_PREFIX}/health/liveness")
 async def liveness_check():
@@ -260,8 +211,6 @@ async def readiness_check():
     google_places_health = await google_places_api_health_check()
     cpu_health = check_cpu_health()
     disk_health = check_disk_health()
-
-    print(liveness, google_places_health, cpu_health, disk_health)
 
     if liveness["status"] == "ok" and cpu_health.status == "UP" and disk_health.status == "UP" and google_places_health["status"] == "ok":
         return {"status": "ok"}
