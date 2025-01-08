@@ -214,14 +214,14 @@ async def get_name(place_id: str):
 
 
 # Health check endpoint
-@app.get(f"{API_PREFIX}/health")
+@app.get(f"{API_PREFIX}/health/general")
 async def health():
     return {"status": "ok"}
 
 
 # Health check Google Places API
 @app.get(f"{API_PREFIX}/health/google-places")
-async def health():
+async def health_general():
     params = {
         "query": "test",
         "key": API_KEY,
