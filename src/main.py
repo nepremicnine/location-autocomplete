@@ -4,7 +4,6 @@ import os
 from dotenv import load_dotenv
 import httpx
 import pybreaker
-import re
 import requests
 from tenacity import (
     retry,
@@ -13,6 +12,9 @@ from tenacity import (
     retry_if_exception_type,
     RetryError,
 )
+from cpuhealth import check_cpu_health
+from diskhealth import check_disk_health
+from models import HealthResponse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -161,6 +163,7 @@ async def get_geometry(place_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 # Helper function with Circuit Breaker for getting geometry
 @retry_strategy
 @breaker
@@ -175,8 +178,9 @@ async def get_name_from_google(place_id: str):
     response_json = response.json()
 
     name = response_json["result"]["formatted_address"]
-    
+
     return name
+
 
 # Get location name from place_id
 @app.get(f"{API_PREFIX}/location/name")
@@ -184,7 +188,7 @@ async def get_name(place_id: str):
     try:
         name = await get_name_from_google(place_id)
         return {"name": name}
-    
+
     except RetryError as retry_error:
         raise HTTPException(
             status_code=503,
@@ -196,15 +200,15 @@ async def get_name(place_id: str):
             status_code=503,
             detail="Service temporarily unavailable due to repeated failures.",
         )
-    
+
     except httpx.RequestError as e:
         raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
-    
+
     except httpx.HTTPStatusError as e:
         raise HTTPException(
             status_code=response.status_code, detail=f"API error: {str(e)}"
         )
-    
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -213,3 +217,38 @@ async def get_name(place_id: str):
 @app.get(f"{API_PREFIX}/health")
 async def health():
     return {"status": "ok"}
+
+
+# Health check Google Places API
+@app.get(f"{API_PREFIX}/health/google-places")
+async def health():
+    params = {
+        "query": "test",
+        "key": API_KEY,
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get('https://maps.googleapis.com/maps/api/place/textsearch/json', params=params)
+            if response.status_code == 200 and "results" in response.json():
+                return {"status": "ok"}
+            else:
+                return {
+                    "status": "error",
+                    "detail": "Unexpected response from Google Places API",
+                }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+
+# Health check CPU
+@app.get(f"{API_PREFIX}/health/cpu", response_model=HealthResponse)
+async def cpu_health_check():
+    cpu_health = check_cpu_health()
+    return HealthResponse(status=cpu_health.status, components={"cpu": cpu_health})
+
+
+# Health check memory
+@app.get(f"{API_PREFIX}/health/disk", response_model=HealthResponse)
+async def disk_health_check():
+    disk_health = check_disk_health()
+    return HealthResponse(status=disk_health.status, components={"disk": disk_health})
