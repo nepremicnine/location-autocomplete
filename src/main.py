@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.routing import APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 import httpx
@@ -24,6 +25,8 @@ LOCATION_AUTOCOMPLETE_SERVER_MODE = os.getenv(
     "LOCATION_AUTOCOMPLETE_SERVER_MODE", "development"
 )
 LOCATION_AUTOCOMPLETE_SERVER_PORT = os.getenv("LOCATION_AUTOCOMPLETE_SERVER_PORT", 8080)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
 
 # Determine the prefix based on the server mode
 API_PREFIX = (
@@ -37,6 +40,22 @@ app = FastAPI(
     openapi_url=f"{API_PREFIX}/openapi.json",
     docs_url=f"{API_PREFIX}/docs",
     redoc_url=f"{API_PREFIX}/redoc",
+)
+
+
+origins = [
+    FRONTEND_URL,
+    BACKEND_URL,
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Breaker Configuration
