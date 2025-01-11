@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.routing import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -16,6 +16,9 @@ from tenacity import (
 from src.cpuhealth import check_cpu_health
 from src.diskhealth import check_disk_health
 from src.models import HealthResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Summary
+from time import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -73,6 +76,32 @@ retry_strategy = retry(
     wait=wait_exponential(multiplier=1, min=2, max=6),
     retry=retry_if_exception_type(requests.exceptions.RequestException),
 )
+
+# Initialize Prometheus instrumentator
+Instrumentator().instrument(app).expose(app, endpoint=f"{API_PREFIX}/metrics")
+
+# Additional custom metrics
+REQUEST_COUNT = Counter('request_count', 'Total number of requests', ['method', 'endpoint', 'status_code'])
+REQUEST_LATENCY = Summary('request_latency_seconds', 'Latency of requests in seconds')
+
+@app.middleware("http")
+async def add_prometheus_metrics(request: Request, call_next):
+    start_time = time()
+    response = await call_next(request)
+    process_time = time() - start_time
+
+    # Record custom metrics
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status_code=response.status_code
+    ).inc()
+
+    REQUEST_LATENCY.observe(process_time)
+
+    return response
+
+
 
 
 # Helper function with Circuit Breaker for getting suggestions
